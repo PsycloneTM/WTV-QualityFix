@@ -1,13 +1,10 @@
 # W.tv Quality Selector Fix
-
 A userscript that fixes video quality selector crashes on W.tv by handling `structuredClone` Proxy cloning errors.
 
 ## Problem
-
 When attempting to change video quality on W.tv, the site's video player (likely using Amazon IVS) encounters a crash due to `structuredClone` failing when trying to clone Proxy objects. This prevents users from selecting their desired video quality.
 
 ## Solution
-
 This userscript intercepts calls to `window.structuredClone` and provides robust error handling with multiple fallback strategies:
 
 1. **Primary**: Attempts the native `structuredClone` operation
@@ -24,33 +21,31 @@ This userscript intercepts calls to `window.structuredClone` and provides robust
 
 ### Steps
 1. Install a userscript manager (if you haven't already)
-2. Click [here](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix-1.0.user.js) to open the userscript in the Tampermonkey dashboard, which will prompt you to install
-3. Click "Install"
+2. Click one of the following to install:
+   - [Version 1.0 - Quality Fix Only](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix-1.0.user.js)
+   - [Version 1.1 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality-1.1.user.js)
+3. Click "Install" when prompted
 
 ## Usage
-
 Once installed, the script runs automatically on all `*.w.tv` pages. You should now be able to:
 - Select video quality without crashes
 - Change quality settings smoothly
 - Use the quality selector as intended
 
 ## Technical Details
-
 - **Runs at**: `document-start` (before page loads, ensuring the fix is in place early)
 - **Permissions**: None required (`@grant none`)
 - **Matches**: All W.tv domains (`*://*.w.tv/*`)
-- **Version**: 1.0
+- **Version**: 1.0 / 1.1
 - **License**: MIT
 
 ## Compatibility
-
 - ✅ Firefox
 - ✅ Chrome/Chromium browsers
 - ✅ Edge
 - ✅ Safari (with Tampermonkey)
 
 ## How It Works
-
 The script overrides the native `structuredClone` function with a wrapped version that catches errors:
 ```javascript
 window.structuredClone = function(obj, options) {
@@ -71,27 +66,28 @@ This prevents the player from crashing when encountering objects that can't be c
 - Ensure your userscript manager is enabled
 - Check that the script is enabled in your userscript manager
 - Verify you're on a `*.w.tv` domain
-- Try refreshing the page (Ctrl+R or Cmd+R)
+- Try hard refreshing the page (Ctrl+Shift+R or Cmd+Shift+R)
 - Check browser console (F12) for any error messages
 
 **Still having issues?**
-- Open browser console (F12)
+- Open the browser console (F12)
 - Look for messages starting with "W.tv Fix:"
-- Report issues with console output included
+- [Report issues](https://github.com/PsycloneTM/WTV-QualityFix/issues) with console output included
 
 ## Contributing
-
 Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## License
-
 MIT License - see [LICENSE](LICENSE) file for details
 
 ## Author
-
 **CycloneTM**
 
 ## Changelog
+
+### v1.1
+- Added auto high quality feature
+- Forces highest playback by default
 
 ### v1.0
 - Initial release
