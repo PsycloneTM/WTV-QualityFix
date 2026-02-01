@@ -23,7 +23,7 @@ This userscript intercepts calls to `window.structuredClone` and provides robust
   - [Violentmonkey](https://violentmonkey.github.io/) (Chrome, Firefox, Edge)
 
 ### Steps
-1. Install [Tampermonkey](https://www.tampermonkey.net/) for your web browser
+1. Install a userscript manager (if you haven't already)
 2. Click [here](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix-1.0.user.js) to open the userscript in the Tampermonkey dashboard, which will prompt you to install
 3. Click "Install"
 
