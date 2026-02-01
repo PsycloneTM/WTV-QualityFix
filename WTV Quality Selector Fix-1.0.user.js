@@ -7,6 +7,8 @@
 // @match        *://*.w.tv/*
 // @grant        none
 // @run-at       document-start
+// @updateURL    https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix-1.0.user.js
+// @downloadURL  https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix-1.0.user.js
 // @license      MIT
 // ==/UserScript==
 
