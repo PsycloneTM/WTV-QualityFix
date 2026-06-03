@@ -34,8 +34,8 @@ A userscript manager extension:
 
 1. Install a userscript manager (if you haven't already)
 2. Click one of the following to install:
-   - [Version 1.2 - Quality Fix Only](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix-1.2.user.js)
-   - [Version 1.3 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality-1.3.user.js)
+   - [Version 1.2 - Quality Fix Only](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix.user.js)
+   - [Version 1.3 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
 3. Click "Install" when prompted
 
 ## Usage
