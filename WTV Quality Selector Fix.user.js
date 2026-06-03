@@ -12,38 +12,34 @@
 // @license      MIT
 // ==/UserScript==
 
-(function() {
-    'use strict';
+(function () {
+   "use strict";
 
-    function deproxy(obj) {
-        try {
-            return JSON.parse(JSON.stringify(obj));
-        } catch (e) {
-            return obj;
-        }
+  const deproxy = (obj) => {
+    try {
+      return JSON.parse(JSON.stringify(obj));
+    } catch {
+      return obj;
     }
+  };
 
-    const _clone = window.structuredClone;
-    window.structuredClone = function (obj, opts) {
-        try {
-            return _clone(obj, opts);
-        } catch (e) {
-            return deproxy(obj);
-        }
-    };
+  const _clone = window.structuredClone;
+  window.structuredClone = (obj, opts) => {
+    try {
+      return _clone(obj, opts);
+    } catch {
+      return deproxy(obj);
+    }
+  };
 
-    const _workerPostMessage = Worker.prototype.postMessage;
-    Worker.prototype.postMessage = function (msg, transfer) {
-        try {
-            // Attempt the original call first (fast path for non-proxy objects)
-            return _workerPostMessage.apply(this, arguments);
-        } catch (e) {
-            if (e instanceof DOMException) {
-                // Sanitise and retry
-                const clean = deproxy(msg);
-                return _workerPostMessage.call(this, clean, transfer || []);
-            }
-            throw e;
-        }
-    };
+  const _post = Worker.prototype.postMessage;
+  Worker.prototype.postMessage = function (msg, transfer) {
+    try {
+      return _post.apply(this, arguments);
+    } catch (e) {
+      if (e instanceof DOMException)
+        return _post.call(this, deproxy(msg), transfer || []);
+      throw e;
+    }
+  };
 })();
