@@ -17,9 +17,9 @@ This crashes the quality selector entirely, leaving users stuck on whatever qual
 The script applies fixes at multiple layers to ensure Proxy objects are stripped before they reach any cloning boundary:
 
 1. **`structuredClone` wrapper** — catches clone failures and falls back to a JSON round-trip (`JSON.parse(JSON.stringify())`) that produces a guaranteed plain object
-2. **`Worker.prototype.postMessage` wrapper** — intercepts `postMessage` calls at the source; if a `DOMException` is thrown, sanitises the message and retries
-3. **`player.setQuality` wrapper** *(Auto High Quality version only)* — deproxies the quality object before it enters IVS, as early as possible
-4. **`localStorage` spoof** *(Auto High Quality version only)* — returns a 1080p60 quality preset for the `stream-settings` key as a fallback for pre-player code paths
+2. **IVS worker intercept** — patches `postMessage` on the IVS worker instance directly; upgrades any quality the site tries to set and retries with a sanitised message on `DOMException`
+3. **Quality drift correction** — listens for worker messages and corrects any ABR-driven quality changes back to the highest available
+4. **`localStorage` spoof** — dynamically returns the best known quality for the `stream-settings` key so pre-player code paths also read the correct value
 
 ## Installation
 
@@ -35,7 +35,7 @@ A userscript manager extension:
 1. Install a userscript manager (if you haven't already)
 2. Click one of the following to install:
    - [Version 1.2 - Quality Fix Only](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix.user.js)
-   - [Version 1.3 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
+   - [Version 1.4 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
 3. Click "Install" when prompted
 
 ## Usage
@@ -102,14 +102,17 @@ Worker.prototype.postMessage = function(msg, transfer) {
 
 This catches the crash at the exact boundary where `postMessage` serialises its payload, covering any code path that hits this issue — not just quality changes.
 
-### Fix layer 3 — `player.setQuality` wrapper *(Auto High Quality version)*
+### Fix layer 3 — Quality drift correction
 
-The Auto High Quality version also wraps `setQuality` on the IVS player instance directly, deproxying the quality argument before it travels any further:
+The worker's outbound messages are monitored for quality change events. If the player drifts away from the best quality (e.g. via ABR), the script immediately sends a correcting `setQuality` back:
 
 ```javascript
-player.setQuality = function(quality, skipLatency) {
-    return originalSetQuality(JSON.parse(JSON.stringify(quality)), skipLatency);
-};
+worker.addEventListener("message", (evt) => {
+    const { key, value } = evt.data.arg ?? {};
+    if (key === "quality" && value.name !== bestQuality.name) {
+        worker.postMessage({ id: 0, funcName: "setQuality", args: [bestQuality, false] });
+    }
+});
 ```
 
 ## Troubleshooting
@@ -139,6 +142,13 @@ MIT License — see [LICENSE](LICENSE) for details.
 **CycloneTM**
 
 ## Changelog
+
+### v1.4
+- Replaced `Worker.prototype.postMessage` patching with a per-instance IVS worker intercept for more targeted and reliable interception
+- Added IVS worker message listener to detect quality list and drift events, auto-correcting any ABR quality changes back to the highest available
+- Added polling on `load` to request qualities from the worker if not yet received, with a 15 s timeout to avoid indefinite polling
+- Updated `localStorage` spoof to dynamically reflect the best known quality rather than a hardcoded preset
+- Removed all console logging for a cleaner, release-ready build
 
 ### v1.3
 - Added `Worker.prototype.postMessage` interception to fix the root crash path (`setQuality → postMessage → DOMException`)
