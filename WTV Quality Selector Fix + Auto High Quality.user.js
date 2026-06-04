@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WTV Quality Selector Fix + Auto High Quality
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Forces playback quality to the highest available on w.tv
 // @author       CycloneTM
 // @match        *://*.w.tv/*
@@ -32,78 +32,82 @@
     }
   };
 
-  const _post = Worker.prototype.postMessage;
-  Worker.prototype.postMessage = function (msg, transfer) {
+  let bestQuality = null;
+  const _getItem = Storage.prototype.getItem;
+  Storage.prototype.getItem = function (key) {
+    if (key !== "stream-settings" || !bestQuality)
+      return _getItem.apply(this, arguments);
     try {
-      return _post.apply(this, arguments);
-    } catch (e) {
-      if (e instanceof DOMException)
-        return _post.call(this, deproxy(msg), transfer || []);
-      throw e;
+      return JSON.stringify({
+        ...JSON.parse(_getItem.call(this, key)),
+        quality: bestQuality,
+      });
+    } catch {
+      return JSON.stringify({
+        isMuted: false,
+        volume: 50,
+        quality: bestQuality,
+      });
     }
   };
 
-  const QUALITY_SETTING = JSON.stringify({
-    isMuted: false,
-    volume: 50,
-    quality: {
-      name: "1080p60",
-      group: "chunked",
-      codecs: "avc1.64042A,mp4a.40.2",
-      bitrate: 9038107,
-      width: 1920,
-      height: 1080,
-      framerate: 60,
-      isDefault: true,
-    },
-  });
-  const _getItem = Storage.prototype.getItem;
-  Storage.prototype.getItem = function (key) {
-    return key === "stream-settings"
-      ? QUALITY_SETTING
-      : _getItem.apply(this, arguments);
-  };
+  const _Worker = window.Worker;
+  window.Worker = function (url, opts) {
+    const w = new _Worker(url, opts);
+    if (typeof url !== "string" || !url.includes("ivs")) return w;
 
-  function hookPlayer(player) {
-    if (player.__wtvHooked) return;
-    player.__wtvHooked = true;
+    const _post = w.postMessage.bind(w);
+    let qualities = [],
+      sent = false;
 
-    const _setQuality = player.setQuality.bind(player);
-    player.setQuality = (quality, skipLatency) =>
-      _setQuality(deproxy(quality), skipLatency);
+    function sendBest() {
+      if (!qualities.length) return;
+      bestQuality = deproxy(qualities[0]);
+      sent = true;
+      _post({ id: 0, funcName: "setQuality", args: [bestQuality, false] });
+    }
 
-    const applyBest = () => {
+    w.addEventListener("message", (evt) => {
       try {
-        const qualities = player.getQualities();
-        if (qualities?.length) {
-          player.setQuality(qualities[0], false);
+        const data = deproxy(evt.data);
+        if (data?.type !== 12) return;
+        const { key, value } = data.arg ?? {};
+        if (key === "qualities" && Array.isArray(value) && value.length) {
+          qualities = value;
+          sendBest();
         }
+        if (
+          key === "quality" &&
+          value?.name &&
+          bestQuality &&
+          value.name !== bestQuality.name
+        )
+          sendBest();
+      } catch {}
+    });
+
+    w.postMessage = function (msg, transfer) {
+      try {
+        const clean = deproxy(msg);
+        if (clean?.funcName === "setQuality" && qualities.length)
+          clean.args[0] = deproxy(qualities[0]);
+        if (clean?.funcName === "load") {
+          const t = setInterval(() => {
+            if (sent) return clearInterval(t);
+            qualities.length
+              ? (sendBest(), clearInterval(t))
+              : _post({ id: 0, funcName: "getQualities" });
+          }, 500);
+          setTimeout(() => clearInterval(t), 15000);
+        }
+        return _post(clean, transfer || []);
       } catch (e) {
-        console.warn("[WTV-Fix] applyBest failed:", e);
+        if (e instanceof DOMException)
+          return _post(deproxy(msg), transfer || []);
+        throw e;
       }
     };
 
-    applyBest();
-    ["QUALITIES_CHANGED", "PLAYING"].forEach((ev) => {
-      try {
-        player.addEventListener(ev, applyBest);
-      } catch {}
-    });
-  }
-
-  let ticks = 0;
-  const poll = setInterval(() => {
-    if (++ticks > 60) return clearInterval(poll);
-    for (const val of Object.values(window)) {
-      try {
-        if (
-          typeof val?.setQuality === "function" &&
-          typeof val?.getQualities === "function"
-        )
-          hookPlayer(val);
-        if (typeof val?.player?.setQuality === "function")
-          hookPlayer(val.player);
-      } catch {}
-    }
-  }, 500);
+    return w;
+  };
 })();
