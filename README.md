@@ -17,8 +17,8 @@ This crashes the quality selector entirely, leaving users stuck on whatever qual
 The script applies fixes at multiple layers to ensure Proxy objects are stripped before they reach any cloning boundary:
 
 1. **`structuredClone` wrapper** — catches clone failures and falls back to a JSON round-trip (`JSON.parse(JSON.stringify())`) that produces a guaranteed plain object
-2. **IVS worker intercept** — patches `postMessage` on the IVS worker instance directly; upgrades any quality the site tries to set and retries with a sanitised message on `DOMException`
-3. **Quality drift correction** — listens for worker messages and corrects any ABR-driven quality changes back to the highest available
+2. **IVS worker intercept** — patches `postMessage` on the IVS worker instance directly; upgrades any quality the site tries to set on initial load and retries with a sanitised message on `DOMException`
+3. **Quality drift correction** — listens for worker messages and corrects any ABR-driven quality changes back to the highest available, until the user manually selects a quality
 4. **`localStorage` spoof** — dynamically returns the best known quality for the `stream-settings` key so pre-player code paths also read the correct value
 
 ## Installation
@@ -35,7 +35,7 @@ A userscript manager extension:
 1. Install a userscript manager (if you haven't already)
 2. Click one of the following to install:
    - [Version 1.2 - Quality Fix Only](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix.user.js)
-   - [Version 1.4 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
+   - [Version 1.5 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
 3. Click "Install" when prompted
 
 ## Usage
@@ -43,8 +43,8 @@ A userscript manager extension:
 Once installed, the script runs automatically on all `*.w.tv` pages. You should now be able to:
 
 - Select video quality without crashes
-- Have quality automatically set to the highest available *(Auto High Quality version)*
-- Change quality settings smoothly at any time
+- Have quality automatically set to the highest available on load *(Auto High Quality version)*
+- Manually change quality at any time and have your selection respected *(Auto High Quality version)*
 
 ## Technical Details
 
@@ -85,35 +85,37 @@ window.structuredClone = function(obj, options) {
 };
 ```
 
-### Fix layer 2 — `Worker.prototype.postMessage`
+### Fix layer 2 — IVS worker intercept
+
+`postMessage` is patched on the IVS worker instance directly. Any `setQuality` call is upgraded to the highest quality until the user makes a manual selection. On `DOMException`, the message is sanitised and retried:
 
 ```javascript
-Worker.prototype.postMessage = function(msg, transfer) {
+worker.postMessage = function(msg, transfer) {
     try {
-        return originalPostMessage.apply(this, arguments);
+        const clean = deproxy(msg);
+        if (clean?.funcName === "setQuality" && !userSelected) clean.args[0] = bestQuality;
+        return originalPostMessage(clean, transfer || []);
     } catch (e) {
-        if (e instanceof DOMException) {
-            return originalPostMessage.call(this, JSON.parse(JSON.stringify(msg)), transfer || []);
-        }
+        if (e instanceof DOMException) return originalPostMessage(deproxy(msg), transfer || []);
         throw e;
     }
 };
 ```
 
-This catches the crash at the exact boundary where `postMessage` serialises its payload, covering any code path that hits this issue — not just quality changes.
-
 ### Fix layer 3 — Quality drift correction
 
-The worker's outbound messages are monitored for quality change events. If the player drifts away from the best quality (e.g. via ABR), the script immediately sends a correcting `setQuality` back:
+Worker messages are monitored for quality change events. If the player drifts away from the best quality via ABR before the user has made a manual selection, the script immediately corrects it:
 
 ```javascript
 worker.addEventListener("message", (evt) => {
     const { key, value } = evt.data.arg ?? {};
-    if (key === "quality" && value.name !== bestQuality.name) {
+    if (key === "quality" && !userSelected && value.name !== bestQuality.name) {
         worker.postMessage({ id: 0, funcName: "setQuality", args: [bestQuality, false] });
     }
 });
 ```
+
+Once the user manually changes quality via the selector, `userSelected` is set to `true` and drift correction stops, leaving full control to the user.
 
 ## Troubleshooting
 
@@ -142,6 +144,10 @@ MIT License — see [LICENSE](LICENSE) for details.
 **CycloneTM**
 
 ## Changelog
+
+### v1.5
+- Auto high quality now only applies on initial load — manual quality changes via the selector are fully respected and no longer overridden
+- Drift correction disabled once the user has made a manual quality selection
 
 ### v1.4
 - Replaced `Worker.prototype.postMessage` patching with a per-instance IVS worker intercept for more targeted and reliable interception
