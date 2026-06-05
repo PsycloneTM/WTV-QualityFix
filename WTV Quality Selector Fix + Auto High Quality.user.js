@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WTV Quality Selector Fix + Auto High Quality
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Forces playback quality to the highest available on w.tv
 // @author       CycloneTM
 // @match        *://*.w.tv/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 
 (function () {
-   "use strict";
+  "use strict";
 
   const deproxy = (obj) => {
     try {
@@ -58,7 +58,8 @@
 
     const _post = w.postMessage.bind(w);
     let qualities = [],
-      sent = false;
+      sent = false,
+      userSelected = false;
 
     function sendBest() {
       if (!qualities.length) return;
@@ -80,6 +81,7 @@
           key === "quality" &&
           value?.name &&
           bestQuality &&
+          !userSelected &&
           value.name !== bestQuality.name
         )
           sendBest();
@@ -89,8 +91,10 @@
     w.postMessage = function (msg, transfer) {
       try {
         const clean = deproxy(msg);
-        if (clean?.funcName === "setQuality" && qualities.length)
-          clean.args[0] = deproxy(qualities[0]);
+        if (clean?.funcName === "setQuality" && qualities.length) {
+          if (sent) userSelected = true;
+          else clean.args[0] = deproxy(qualities[0]);
+        }
         if (clean?.funcName === "load") {
           const t = setInterval(() => {
             if (sent) return clearInterval(t);
