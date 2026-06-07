@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         WTV Quality Selector Fix + Auto High Quality
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  Forces playback quality to the highest available on w.tv
 // @author       CycloneTM
 // @match        *://*.w.tv/*
-// @grant        none
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @run-at       document-start
 // @updateURL    https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js
 // @downloadURL  https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js
@@ -14,6 +15,9 @@
 
 (function () {
   "use strict";
+  
+  const volume = GM_getValue("volume", 50);
+  const isMuted = GM_getValue("isMuted", false);
 
   const deproxy = (obj) => {
     try {
@@ -38,11 +42,9 @@
     if (key !== "stream-settings" || !bestQuality)
       return _getItem.apply(this, arguments);
     try {
-      const raw = _getItem.call(this, key);
-      const existing = raw ? JSON.parse(raw) : {};
       return JSON.stringify({
-        volume: 50,
-        isMuted: false,
+        volume: volume,
+        isMuted: isMuted,
         quality: bestQuality,
       });
     } catch {
@@ -50,23 +52,34 @@
     }
   };
 
+  const _setItem = Storage.prototype.setItem;
+  Storage.prototype.setItem = function (key, value) {
+    if (key === "stream-settings") {
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed.volume !== "undefined")
+          GM_setValue("volume", parsed.volume);
+        if (typeof parsed.isMuted !== "undefined")
+          GM_setValue("isMuted", parsed.isMuted);
+      } catch {}
+    }
+    return _setItem.apply(this, arguments);
+  };
+
   const _Worker = window.Worker;
   window.Worker = function (url, opts) {
     const w = new _Worker(url, opts);
     if (typeof url !== "string" || !url.includes("ivs")) return w;
-
     const _post = w.postMessage.bind(w);
     let qualities = [],
       sent = false,
       userSelected = false;
-
     function sendBest() {
       if (!qualities.length) return;
       bestQuality = deproxy(qualities[0]);
       sent = true;
       _post({ id: 0, funcName: "setQuality", args: [bestQuality, false] });
     }
-
     w.addEventListener("message", (evt) => {
       try {
         const data = deproxy(evt.data);
