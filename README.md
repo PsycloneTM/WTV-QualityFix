@@ -35,7 +35,7 @@ A userscript manager extension:
 1. Install a userscript manager (if you haven't already)
 2. Click one of the following to install:
    - [Version 1.2 - Quality Fix Only](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix.user.js)
-   - [Version 1.7 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
+   - [Version 1.8 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
 3. Click "Install" when prompted
 
 ## Usage
@@ -166,13 +166,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## Changelog
 
-### v1.7
-- Volume and mute state are now stored in the userscript manager's own storage via `GM_getValue`/`GM_setValue` rather than being hardcoded
-- Values default to volume `50` and mute `false` on first run, then persist across sessions automatically
-- A `setItem` hook syncs any in-page volume/mute changes back to addon storage so the user's last preference is always remembered
-- Added `@grant GM_getValue` and `@grant GM_setValue` to the script header
-
-### v1.6
+### v1.8
 - Fixed audio bug where volume and mute state were being overwritten on load
 - `localStorage` spoof now only patches the `quality` field; all other settings (volume, mute state, etc.) are left entirely to the site's own logic
 
