@@ -38,10 +38,15 @@
     if (key !== "stream-settings" || !bestQuality)
       return _getItem.apply(this, arguments);
     try {
-      const stored = JSON.parse(_getItem.call(this, key) ?? "{}");
-      return JSON.stringify({ ...stored, quality: bestQuality });
+      const raw = _getItem.call(this, key);
+      const existing = raw ? JSON.parse(raw) : {};
+      return JSON.stringify({
+        volume: 50,
+        isMuted: false,
+        quality: bestQuality,
+      });
     } catch {
-      return _getItem.apply(this, arguments);
+      return _getItem.call(this, key);
     }
   };
 
@@ -105,7 +110,6 @@
         throw e;
       }
     };
-
     return w;
   };
 })();
