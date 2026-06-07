@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WTV Quality Selector Fix + Auto High Quality
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  Forces playback quality to the highest available on w.tv
 // @author       CycloneTM
 // @match        *://*.w.tv/*
@@ -38,16 +38,10 @@
     if (key !== "stream-settings" || !bestQuality)
       return _getItem.apply(this, arguments);
     try {
-      return JSON.stringify({
-        ...JSON.parse(_getItem.call(this, key)),
-        quality: bestQuality,
-      });
+      const stored = JSON.parse(_getItem.call(this, key) ?? "{}");
+      return JSON.stringify({ ...stored, quality: bestQuality });
     } catch {
-      return JSON.stringify({
-        isMuted: false,
-        volume: 50,
-        quality: bestQuality,
-      });
+      return _getItem.apply(this, arguments);
     }
   };
 
