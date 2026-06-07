@@ -19,7 +19,7 @@ The script applies fixes at multiple layers to ensure Proxy objects are stripped
 1. **`structuredClone` wrapper** — catches clone failures and falls back to a JSON round-trip (`JSON.parse(JSON.stringify())`) that produces a guaranteed plain object
 2. **IVS worker intercept** — patches `postMessage` on the IVS worker instance directly; upgrades any quality the site tries to set on initial load and retries with a sanitised message on `DOMException`
 3. **Quality drift correction** — listens for worker messages and corrects any ABR-driven quality changes back to the highest available, until the user manually selects a quality
-4. **`localStorage` spoof** — dynamically returns the best known quality for the `stream-settings` key so pre-player code paths also read the correct value
+4. **`localStorage` spoof** — dynamically returns the best known quality for the `stream-settings` key so pre-player code paths also read the correct value; all other fields (volume, mute state, etc.) are passed through untouched from the site's own storage
 
 ## Installation
 
@@ -35,7 +35,7 @@ A userscript manager extension:
 1. Install a userscript manager (if you haven't already)
 2. Click one of the following to install:
    - [Version 1.2 - Quality Fix Only](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix.user.js)
-   - [Version 1.5 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
+   - [Version 1.6 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
 3. Click "Install" when prompted
 
 ## Usage
@@ -144,6 +144,10 @@ MIT License — see [LICENSE](LICENSE) for details.
 **CycloneTM**
 
 ## Changelog
+
+### v1.6
+- Fixed audio bug where volume and mute state were being overwritten on load
+- `localStorage` spoof now only patches the `quality` field; all other settings (volume, mute state, etc.) are left entirely to the site's own logic
 
 ### v1.5
 - Auto high quality now only applies on initial load — manual quality changes via the selector are fully respected and no longer overridden
