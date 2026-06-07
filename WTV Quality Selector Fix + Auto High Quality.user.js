@@ -1,12 +1,11 @@
 // ==UserScript==
 // @name         WTV Quality Selector Fix + Auto High Quality
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.8
 // @description  Forces playback quality to the highest available on w.tv
 // @author       CycloneTM
 // @match        *://*.w.tv/*
-// @grant        GM_getValue
-// @grant        GM_setValue
+// @grant        none
 // @run-at       document-start
 // @updateURL    https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js
 // @downloadURL  https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js
@@ -15,9 +14,6 @@
 
 (function () {
   "use strict";
-  
-  const volume = GM_getValue("volume", 50);
-  const isMuted = GM_getValue("isMuted", false);
 
   const deproxy = (obj) => {
     try {
@@ -42,28 +38,16 @@
     if (key !== "stream-settings" || !bestQuality)
       return _getItem.apply(this, arguments);
     try {
+      const raw = _getItem.call(this, key);
+      const existing = raw ? JSON.parse(raw) : {};
       return JSON.stringify({
-        volume: volume,
-        isMuted: isMuted,
+        volume: 50,
+        isMuted: false,
         quality: bestQuality,
       });
     } catch {
       return _getItem.call(this, key);
     }
-  };
-
-  const _setItem = Storage.prototype.setItem;
-  Storage.prototype.setItem = function (key, value) {
-    if (key === "stream-settings") {
-      try {
-        const parsed = JSON.parse(value);
-        if (typeof parsed.volume !== "undefined")
-          GM_setValue("volume", parsed.volume);
-        if (typeof parsed.isMuted !== "undefined")
-          GM_setValue("isMuted", parsed.isMuted);
-      } catch {}
-    }
-    return _setItem.apply(this, arguments);
   };
 
   const _Worker = window.Worker;
