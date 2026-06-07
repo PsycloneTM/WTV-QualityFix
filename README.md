@@ -19,7 +19,7 @@ The script applies fixes at multiple layers to ensure Proxy objects are stripped
 1. **`structuredClone` wrapper** — catches clone failures and falls back to a JSON round-trip (`JSON.parse(JSON.stringify())`) that produces a guaranteed plain object
 2. **IVS worker intercept** — patches `postMessage` on the IVS worker instance directly; upgrades any quality the site tries to set on initial load and retries with a sanitised message on `DOMException`
 3. **Quality drift correction** — listens for worker messages and corrects any ABR-driven quality changes back to the highest available, until the user manually selects a quality
-4. **`localStorage` spoof** — dynamically returns the best known quality for the `stream-settings` key so pre-player code paths also read the correct value; all other fields (volume, mute state, etc.) are passed through untouched from the site's own storage
+4. **`localStorage` spoof** — dynamically returns the best known quality for the `stream-settings` key so pre-player code paths also read the correct value; volume and mute state are read from and written to the userscript manager's own storage (via `GM_getValue`/`GM_setValue`) so they persist across sessions independently of the site
 
 ## Installation
 
@@ -35,7 +35,7 @@ A userscript manager extension:
 1. Install a userscript manager (if you haven't already)
 2. Click one of the following to install:
    - [Version 1.2 - Quality Fix Only](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix.user.js)
-   - [Version 1.6 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
+   - [Version 1.7 - Quality Fix + Auto High Quality](https://github.com/PsycloneTM/WTV-QualityFix/raw/refs/heads/main/WTV%20Quality%20Selector%20Fix%20+%20Auto%20High%20Quality.user.js)
 3. Click "Install" when prompted
 
 ## Usage
@@ -45,11 +45,12 @@ Once installed, the script runs automatically on all `*.w.tv` pages. You should 
 - Select video quality without crashes
 - Have quality automatically set to the highest available on load *(Auto High Quality version)*
 - Manually change quality at any time and have your selection respected *(Auto High Quality version)*
+- Have your volume and mute preference remembered across sessions via the userscript manager's storage *(Auto High Quality version)*
 
 ## Technical Details
 
 - **Runs at**: `document-start` (before page loads, ensuring patches are in place before IVS initialises)
-- **Permissions**: None required (`@grant none`)
+- **Permissions**: `GM_getValue`, `GM_setValue` (for persisting volume and mute state)
 - **Matches**: All W.tv domains (`*://*.w.tv/*`)
 - **License**: MIT
 
@@ -117,6 +118,26 @@ worker.addEventListener("message", (evt) => {
 
 Once the user manually changes quality via the selector, `userSelected` is set to `true` and drift correction stops, leaving full control to the user.
 
+### Fix layer 4 — Volume and mute persistence
+
+Volume and mute state are stored in the userscript manager's own storage rather than relying on the site's `localStorage`. On startup the script reads the saved values (defaulting to `50` and `false` on first run), and a `setItem` hook writes any changes back whenever the site updates `stream-settings`:
+
+```javascript
+const volume  = GM_getValue("volume",  50);
+const isMuted = GM_getValue("isMuted", false);
+
+Storage.prototype.setItem = function(key, value) {
+    if (key === "stream-settings") {
+        const parsed = JSON.parse(value);
+        if (typeof parsed.volume  !== "undefined") GM_setValue("volume",  parsed.volume);
+        if (typeof parsed.isMuted !== "undefined") GM_setValue("isMuted", parsed.isMuted);
+    }
+    return originalSetItem.apply(this, arguments);
+};
+```
+
+This means volume and mute state survive page refreshes and site storage clears, and are scoped to the script rather than the site.
+
 ## Troubleshooting
 
 **Script not working?**
@@ -144,6 +165,12 @@ MIT License — see [LICENSE](LICENSE) for details.
 **CycloneTM**
 
 ## Changelog
+
+### v1.7
+- Volume and mute state are now stored in the userscript manager's own storage via `GM_getValue`/`GM_setValue` rather than being hardcoded
+- Values default to volume `50` and mute `false` on first run, then persist across sessions automatically
+- A `setItem` hook syncs any in-page volume/mute changes back to addon storage so the user's last preference is always remembered
+- Added `@grant GM_getValue` and `@grant GM_setValue` to the script header
 
 ### v1.6
 - Fixed audio bug where volume and mute state were being overwritten on load
